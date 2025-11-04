@@ -1,11 +1,12 @@
 import { createFileRoute } from '@tanstack/react-router'
 import { useQuery } from '@tanstack/react-query'
 import * as THREE from 'three'
-import { useEffect, useRef, useState } from 'react'
-import type { PointerEvent, WheelEvent} from 'react';
+import { useEffect, useRef } from 'react'
+import type { PointerEvent, WheelEvent } from 'react'
+import type { DatabaseEvent, Event } from '@/lib/Event'
 import supabase from '@/lib/supabase'
-import { Component } from '@/lib/Component'
 import { Surface } from '@/lib/Surface'
+import { createDatabaseInserts, processDatabaseEvent } from '@/lib/Event'
 
 export const Route = createFileRoute('/')({ component: App })
 
@@ -14,21 +15,20 @@ function App() {
   const rendererRef = useRef<THREE.WebGLRenderer | null>(null)
   const surfaceRef = useRef<Surface | null>(null)
 
-  useEffect(() => {
-    surfaceRef.current = Surface.create().addComponents([
-      Component.create(0, 0),
-      Component.create(10, 0),
-      Component.create(-10, 0),
-    ])
-  }, [])
-
-  const { data: components } = useQuery<Array<Component>>({
-    queryKey: ['components'],
+  const { data: databaseEvents } = useQuery<Array<Event>>({
+    queryKey: ['events'],
     queryFn: async () => {
-      const { data } = await supabase.from('components').select('*')
-      return data || []
+      const { data } = await supabase.from('events').select('*')
+      return (data || []).map((event) =>
+        processDatabaseEvent(event as DatabaseEvent),
+      )
     },
+    throwOnError: true,
   })
+
+  useEffect(() => {
+    surfaceRef.current = Surface.create().concatEvents(databaseEvents ?? [])
+  }, [databaseEvents])
 
   useEffect(() => {
     if (shell.current == null) return
@@ -44,7 +44,7 @@ function App() {
       renderer.setSize(window.innerWidth, window.innerHeight)
     }
 
-    shell.current?.appendChild(renderer.domElement)
+    shell.current.appendChild(renderer.domElement)
 
     function animate() {
       surfaceRef.current = surfaceRef.current?.render(renderer) ?? null
@@ -91,6 +91,18 @@ function App() {
         window.innerWidth,
         window.innerHeight,
       ) ?? null
+
+    if (
+      databaseEvents != null &&
+      surfaceRef.current != null &&
+      surfaceRef.current.events.count() > databaseEvents.length
+    ) {
+      const what = supabase
+        .from('events')
+        .upsert(
+          createDatabaseInserts(databaseEvents, surfaceRef.current.events),
+        )
+    }
   }
 
   function pointerup(event: PointerEvent) {

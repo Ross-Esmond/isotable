@@ -1,39 +1,36 @@
-import { Map } from 'immutable'
+import { List, Map } from 'immutable'
 import * as THREE from 'three'
 import { Camera } from './Camera'
-import type { Component } from './Component'
+import { EventType } from './Event'
+import { processEvents } from './eventProcessor'
+import { takeSnowportId } from './logicClock'
+import type { DragEvent, Event, GrabEvent } from './Event'
 
 const material = new THREE.MeshBasicMaterial({ color: 0xffffff })
 
-interface grab {
-  component: string
-  offsetX: number
-  offsetY: number
-}
-
 export class Surface {
   readonly camera: Camera
-  readonly priorComponents: Map<string, Component>
-  readonly components: Map<string, Component>
-  readonly grabbedComponents: Map<number, grab>
-  readonly meshes: Map<string, THREE.Mesh>
 
+  readonly priorEvents: List<Event>
+  readonly events: List<Event>
+
+  readonly meshes: Map<number, THREE.Mesh>
   private readonly threeScene: THREE.Scene
   private readonly threeCamera: THREE.Camera
 
   private constructor(
     camera: Camera,
-    priorComponents: Map<string, Component>,
-    components: Map<string, Component>,
-    grabbedComponents: Map<number, grab>,
-    meshes: Map<string, THREE.Mesh>,
+    priorEvents: List<Event>,
+    events: List<Event>,
+    meshes: Map<number, THREE.Mesh>,
     threeScene: THREE.Scene,
     threeCamera: THREE.Camera,
   ) {
     this.camera = camera
-    this.priorComponents = priorComponents
-    this.components = components
-    this.grabbedComponents = grabbedComponents
+
+    this.priorEvents = priorEvents
+    this.events = events
+
     this.meshes = meshes
     this.threeScene = threeScene
     this.threeCamera = threeCamera
@@ -42,12 +39,12 @@ export class Surface {
   static create(): Surface {
     const camera = new THREE.OrthographicCamera(-10, 10, 10, -10, 0, 200)
     camera.position.z = 100
+    const events = List<Event>()
     return new Surface(
       new Camera(),
-      Map<string, Component>(),
-      Map<string, Component>(),
-      Map<number, grab>(),
-      Map<string, THREE.Mesh>(),
+      events,
+      events,
+      Map<number, THREE.Mesh>(),
       new THREE.Scene(),
       camera,
     )
@@ -56,9 +53,8 @@ export class Surface {
   setCamera(camera: Camera): Surface {
     return new Surface(
       camera,
-      this.priorComponents,
-      this.components,
-      this.grabbedComponents,
+      this.priorEvents,
+      this.events,
       this.meshes,
       this.threeScene,
       this.threeCamera,
@@ -69,32 +65,11 @@ export class Surface {
     return this.setCamera(fn(this.camera))
   }
 
-  addComponents(components: Array<Component>): Surface {
-    let newComponents = this.components
-    for (const component of components) {
-      newComponents = newComponents.set(component.id, component)
-    }
-    return this.setComponents(newComponents)
-  }
-
-  setComponents(components: Map<string, Component>): Surface {
+  concatEvents(events: Array<Event>): Surface {
     return new Surface(
       this.camera,
-      this.priorComponents,
-      components,
-      this.grabbedComponents,
-      this.meshes,
-      this.threeScene,
-      this.threeCamera,
-    )
-  }
-
-  setGrabbedComponents(grabbedComponents: Map<number, grab>): Surface {
-    return new Surface(
-      this.camera,
-      this.priorComponents,
-      this.components,
-      grabbedComponents,
+      this.priorEvents,
+      this.events.concat(events),
       this.meshes,
       this.threeScene,
       this.threeCamera,
@@ -108,9 +83,10 @@ export class Surface {
     width: number,
     height: number,
   ): Surface {
+    const [components] = processEvents(this.events, this.events)
     let result = null
     const [xWorld, yWorld] = this.camera.getWorldPosition(x, y, width, height)
-    for (const component of this.components.values()) {
+    for (const component of components) {
       const halfWidth = component.width / 2
       const halfHeight = component.height / 2
       if (
@@ -125,13 +101,17 @@ export class Surface {
       }
     }
     if (result !== null) {
-      return this.setGrabbedComponents(
-        this.grabbedComponents.set(id, {
-          component: result.id,
-          offsetX: xWorld - result.x,
-          offsetY: yWorld - result.y,
-        }),
-      )
+      return this.concatEvents([
+        {
+          entity: 0,
+          type: EventType.Grab,
+          snowportId: takeSnowportId(),
+          pointerId: id,
+          componentId: result.id,
+          xOffset: xWorld - result.x,
+          yOffset: yWorld - result.y,
+        } as GrabEvent,
+      ])
     } else {
       return this.setCamera(this.camera.addPointer(id, x, y, width, height))
     }
@@ -144,25 +124,39 @@ export class Surface {
     width: number,
     height: number,
   ): Surface {
-    if (this.grabbedComponents.has(id)) {
-      const grab = this.grabbedComponents.get(id)!
-      const component = this.components.get(grab.component)!
+    const [components] = processEvents(this.events, this.events)
+    const component = components.find((c) => c.grab?.pointerId === id)
+    if (component?.grab) {
       const [xWorld, yWorld] = this.camera.getWorldPosition(x, y, width, height)
-      const updatedComponent = component.setPosition(
-        xWorld - grab.offsetX,
-        yWorld - grab.offsetY,
-      )
-      return this.setComponents(
-        this.components.set(grab.component, updatedComponent),
-      )
+      return this.concatEvents([
+        {
+          entity: 0,
+          type: EventType.Drag,
+          snowportId: takeSnowportId(),
+          pointerId: id,
+          componentId: component.id,
+          x: xWorld - component.grab.offsetX,
+          y: yWorld - component.grab.offsetY,
+        } as DragEvent,
+      ])
     } else {
       return this.setCamera(this.camera.updatePointer(id, x, y, width, height))
     }
   }
 
   drop(id: number): Surface {
-    if (this.grabbedComponents.has(id)) {
-      return this.setGrabbedComponents(this.grabbedComponents.remove(id))
+    const [components] = processEvents(this.events, this.events)
+    const component = components.find((c) => c.grab?.pointerId === id)
+    if (component?.grab) {
+      return this.concatEvents([
+        {
+          entity: 0,
+          type: EventType.Drop,
+          snowportId: takeSnowportId(),
+          pointerId: id,
+          componentId: component.id,
+        },
+      ])
     } else {
       return this.setCamera(this.camera.removePointer(id))
     }
@@ -172,43 +166,30 @@ export class Surface {
     const [width, height] = renderer.getSize(new THREE.Vector2())
     this.camera.apply(this.threeCamera, width, height)
 
-    const oldKeys = this.priorComponents.keySeq().toSet()
-    const newKeys = this.components.keySeq().toSet()
-    const onlyNew = newKeys.subtract(oldKeys)
-    const both = oldKeys.intersect(newKeys)
-    const onlyOld = oldKeys.subtract(newKeys)
+    const [existingComponents, createdComponents] = processEvents(
+      this.events,
+      this.priorEvents,
+    )
 
     const meshes = this.meshes.asMutable()
 
-    for (const key of onlyNew) {
-      const component = this.components.get(key)
-      if (component) {
-        const geometry = new THREE.BoxGeometry(
-          component.width,
-          component.height,
-          0.02,
-        )
+    for (const component of createdComponents) {
+      const geometry = new THREE.BoxGeometry(
+        component.width,
+        component.height,
+        0.02,
+      )
 
-        const mesh = new THREE.Mesh(geometry, material)
-        mesh.position.set(component.x, component.y, component.z)
-        this.threeScene.add(mesh)
-        meshes.set(component.id, mesh)
-      }
+      const mesh = new THREE.Mesh(geometry, material)
+      mesh.position.set(component.x, component.y, component.z)
+      this.threeScene.add(mesh)
+      meshes.set(component.id, mesh)
     }
 
-    for (const key of both) {
-      const component = this.components.get(key)
-      const mesh = this.meshes.get(key)
-      if (component && mesh) {
-        mesh.position.set(component.x, component.y, component.z)
-      }
-    }
-
-    for (const key of onlyOld) {
-      const mesh = this.meshes.get(key)
+    for (const component of existingComponents) {
+      const mesh = this.meshes.get(component.id)
       if (mesh) {
-        this.threeScene.remove(mesh)
-        meshes.remove(key)
+        mesh.position.set(component.x, component.y, component.z)
       }
     }
 
@@ -216,9 +197,8 @@ export class Surface {
 
     return new Surface(
       this.camera,
-      this.components,
-      this.components,
-      this.grabbedComponents,
+      this.events,
+      this.events,
       meshes.asImmutable(),
       this.threeScene,
       this.threeCamera,
