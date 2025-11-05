@@ -1,6 +1,6 @@
-import { Set } from 'immutable'
-import { ingestSnowportId } from './logicClock'
-import type { List } from 'immutable'
+import { Set } from 'immutable';
+import { ingestSnowportId } from './logicClock';
+import type { List } from 'immutable';
 
 export enum EventType {
   Create = 'create',
@@ -10,16 +10,16 @@ export enum EventType {
 }
 
 export interface DatabaseEvent {
-  readonly playspace: number
-  readonly snowportId: number
-  readonly componentID: number
-  readonly x?: number
-  readonly y?: number
-  readonly eventType: EventType
+  readonly playspace: number;
+  readonly snowportId: number;
+  readonly componentID: number;
+  readonly x?: number;
+  readonly y?: number;
+  readonly eventType: EventType;
 }
 
 export function processDatabaseEvent(input: DatabaseEvent): Event {
-  ingestSnowportId(input.snowportId)
+  ingestSnowportId(input.snowportId);
   switch (input.eventType) {
     case EventType.Create:
       return {
@@ -30,7 +30,7 @@ export function processDatabaseEvent(input: DatabaseEvent): Event {
         componentId: input.componentID,
         x: input.x!,
         y: input.y!,
-      } as CreatedEvent
+      } as CreatedEvent;
     case EventType.Grab:
       return {
         entity: input.playspace,
@@ -42,7 +42,7 @@ export function processDatabaseEvent(input: DatabaseEvent): Event {
         yOffset: 0,
         x: input.x!,
         y: input.y!,
-      } as GrabEvent
+      } as GrabEvent;
     case EventType.Drag:
       return {
         entity: input.playspace,
@@ -52,7 +52,7 @@ export function processDatabaseEvent(input: DatabaseEvent): Event {
         componentId: input.componentID,
         x: input.x!,
         y: input.y!,
-      } as DragEvent
+      } as DragEvent;
     case EventType.Drop:
       return {
         entity: input.playspace,
@@ -62,9 +62,9 @@ export function processDatabaseEvent(input: DatabaseEvent): Event {
         componentId: input.componentID,
         x: input.x!,
         y: input.y!,
-      } as DropEvent
+      } as DropEvent;
     default:
-      throw new Error(`Unknown event type: ${input.eventType}`)
+      throw new Error(`Unknown event type: ${input.eventType}`);
   }
 }
 
@@ -72,11 +72,11 @@ export function createDatabaseInserts(
   databaseEvents: Array<Event>,
   events: List<Event>,
 ): any {
-  const dbIds = Set<number>().asMutable()
+  const dbIds = Set<number>().asMutable();
   for (const dbEvent of databaseEvents) {
-    dbIds.add(dbEvent.snowportId)
+    dbIds.add(dbEvent.snowportId);
   }
-  const inserts = [] as Array<DatabaseEvent>
+  const inserts = [] as Array<DatabaseEvent>;
   for (const event of events) {
     if (!dbIds.has(event.snowportId)) {
       inserts.push({
@@ -86,41 +86,41 @@ export function createDatabaseInserts(
         snowportId: event.snowportId,
         x: event.x,
         y: event.y,
-      })
+      });
     }
   }
-  return inserts
+  return inserts;
 }
 
 export interface Event {
   /**
    * The entity associated with the event, e.g., for Grab events, this could be the ID of the user or system initiating the grab.
    */
-  readonly entity: number
-  readonly type: EventType
-  readonly snowportId: number
-  readonly pointerId: number
-  readonly componentId: number
+  readonly entity: number;
+  readonly type: EventType;
+  readonly snowportId: number;
+  readonly pointerId: number;
+  readonly componentId: number;
 }
 
 export interface CreatedEvent extends Event {
-  readonly type: EventType.Create
-  readonly x: number
-  readonly y: number
+  readonly type: EventType.Create;
+  readonly x: number;
+  readonly y: number;
 }
 
 export interface GrabEvent extends Event {
-  readonly type: EventType.Grab
-  readonly xOffset: number
-  readonly yOffset: number
+  readonly type: EventType.Grab;
+  readonly xOffset: number;
+  readonly yOffset: number;
 }
 
 export interface DragEvent extends Event {
-  readonly type: EventType.Drag
-  readonly x: number
-  readonly y: number
+  readonly type: EventType.Drag;
+  readonly x: number;
+  readonly y: number;
 }
 
 export interface DropEvent extends Event {
-  readonly type: EventType.Drop
+  readonly type: EventType.Drop;
 }

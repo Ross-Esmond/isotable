@@ -1,77 +1,77 @@
-import { createFileRoute } from '@tanstack/react-router'
-import { useQuery } from '@tanstack/react-query'
-import * as THREE from 'three'
-import { useEffect, useRef } from 'react'
-import type { PointerEvent, WheelEvent } from 'react'
-import type { DatabaseEvent, Event } from '@/lib/Event'
-import supabase from '@/lib/supabase'
-import { Surface } from '@/lib/Surface'
-import { createDatabaseInserts, processDatabaseEvent } from '@/lib/Event'
+import { createFileRoute } from '@tanstack/react-router';
+import { useQuery } from '@tanstack/react-query';
+import * as THREE from 'three';
+import { useEffect, useRef } from 'react';
+import type { PointerEvent, WheelEvent } from 'react';
+import type { DatabaseEvent, Event } from '@/lib/Event';
+import supabase from '@/lib/supabase';
+import { Surface } from '@/lib/Surface';
+import { createDatabaseInserts, processDatabaseEvent } from '@/lib/Event';
 
-export const Route = createFileRoute('/')({ component: App })
+export const Route = createFileRoute('/')({ component: App });
 
 function App() {
-  const shell = useRef<HTMLDivElement | null>(null)
-  const rendererRef = useRef<THREE.WebGLRenderer | null>(null)
-  const surfaceRef = useRef<Surface | null>(null)
+  const shell = useRef<HTMLDivElement | null>(null);
+  const rendererRef = useRef<THREE.WebGLRenderer | null>(null);
+  const surfaceRef = useRef<Surface | null>(null);
 
   const { data: databaseEvents } = useQuery<Array<Event>>({
     queryKey: ['events'],
     queryFn: async () => {
-      const { data } = await supabase.from('events').select('*')
+      const { data } = await supabase.from('events').select('*');
       return (data || []).map((event) =>
         processDatabaseEvent(event as DatabaseEvent),
-      )
+      );
     },
     throwOnError: true,
-  })
+  });
 
   useEffect(() => {
-    surfaceRef.current = Surface.create().concatEvents(databaseEvents ?? [])
-  }, [databaseEvents])
+    surfaceRef.current = Surface.create().concatEvents(databaseEvents ?? []);
+  }, [databaseEvents]);
 
   useEffect(() => {
-    if (shell.current == null) return
+    if (shell.current == null) return;
 
     if (rendererRef.current == null) {
-      rendererRef.current = new THREE.WebGLRenderer()
+      rendererRef.current = new THREE.WebGLRenderer();
     }
 
-    const renderer = rendererRef.current
-    renderer.setSize(window.innerWidth, window.innerHeight)
+    const renderer = rendererRef.current;
+    renderer.setSize(window.innerWidth, window.innerHeight);
 
     window.onresize = () => {
-      renderer.setSize(window.innerWidth, window.innerHeight)
-    }
+      renderer.setSize(window.innerWidth, window.innerHeight);
+    };
 
-    shell.current.appendChild(renderer.domElement)
+    shell.current.appendChild(renderer.domElement);
 
     function animate() {
-      surfaceRef.current = surfaceRef.current?.render(renderer) ?? null
+      surfaceRef.current = surfaceRef.current?.render(renderer) ?? null;
     }
-    renderer.setAnimationLoop(animate)
+    renderer.setAnimationLoop(animate);
 
     return () => {
-      renderer.setAnimationLoop(null)
-      shell.current?.removeChild(renderer.domElement)
-    }
-  }, [shell.current])
+      renderer.setAnimationLoop(null);
+      shell.current?.removeChild(renderer.domElement);
+    };
+  }, [shell.current]);
 
   useEffect(() => {
     return () => {
-      rendererRef.current?.dispose()
-    }
-  }, [])
+      rendererRef.current?.dispose();
+    };
+  }, []);
 
   function onWheel(event: WheelEvent<HTMLDivElement>) {
     surfaceRef.current =
       surfaceRef.current?.updateCamera((camera) =>
         camera.zoom(event.deltaY / 120),
-      ) ?? null
+      ) ?? null;
   }
 
   function pointerdown(event: PointerEvent) {
-    shell.current?.setPointerCapture(event.pointerId)
+    shell.current?.setPointerCapture(event.pointerId);
     surfaceRef.current =
       surfaceRef.current?.grab(
         event.pointerId,
@@ -79,7 +79,7 @@ function App() {
         event.clientY,
         window.innerWidth,
         window.innerHeight,
-      ) ?? null
+      ) ?? null;
   }
 
   function pointermove(event: PointerEvent) {
@@ -90,7 +90,7 @@ function App() {
         event.clientY,
         window.innerWidth,
         window.innerHeight,
-      ) ?? null
+      ) ?? null;
 
     if (
       databaseEvents != null &&
@@ -101,13 +101,13 @@ function App() {
         .from('events')
         .upsert(
           createDatabaseInserts(databaseEvents, surfaceRef.current.events),
-        )
+        );
     }
   }
 
   function pointerup(event: PointerEvent) {
-    shell.current?.releasePointerCapture(event.pointerId)
-    surfaceRef.current = surfaceRef.current?.drop(event.pointerId) ?? null
+    shell.current?.releasePointerCapture(event.pointerId);
+    surfaceRef.current = surfaceRef.current?.drop(event.pointerId) ?? null;
   }
 
   return (
@@ -119,5 +119,5 @@ function App() {
       onPointerMove={pointermove}
       onPointerUp={pointerup}
     ></div>
-  )
+  );
 }
