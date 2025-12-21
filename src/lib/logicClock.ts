@@ -25,7 +25,7 @@ export function takeSnowportId(): number {
     currentTime += 1;
     nextIndex = 0;
   }
-  const time = (currentTime * 2^16) + (sourceCode * 2**8) + nextIndex;
+  const time = (currentTime * 2**16) + (sourceCode * 2**8) + nextIndex;
   if (time < 0) {
     throw new Error(
       `time was negative: currentTime ${currentTime}, sourceCode ${sourceCode}, nextIndex ${nextIndex}`,
