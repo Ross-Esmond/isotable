@@ -32,7 +32,10 @@ export function processEvents(
 
   for (const nextKey of nextOnly) {
     const event = nextEvents.get(nextKey)!;
-    if (event.type === EventType.Create) {
+    if (event.type === EventType.Connected) {
+      // Connected events don't affect components, just skip them
+      continue;
+    } else if (event.type === EventType.Create) {
       const { componentId, x, y } = event;
       nextComponents.set(componentId, Component.create(componentId, x, y));
     } else if (event.type === EventType.Grab) {

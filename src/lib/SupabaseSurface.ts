@@ -1,6 +1,8 @@
 import { Map } from 'immutable';
 import { useEffect, useRef } from 'react';
-import { processDatabaseEvent } from './Event';
+import { EventType, processDatabaseEvent } from './Event';
+import { setSourceCode } from './logicClock';
+import { getStoredSourceCode, saveSourceCode } from './sourceCodeManager';
 import { Surface } from './Surface';
 import type { DatabaseEvent, Event } from './Event';
 import type {
@@ -44,47 +46,98 @@ export class SupabaseSurface {
 type Render = (renderer: THREE.WebGLRenderer) => void;
 type SetSurface = (surface: Surface | ((surface: Surface) => Surface)) => void;
 
+async function initializeSourceCode(
+  supabase: SupabaseClient,
+): Promise<number> {
+  // Check if we have a stored sourceCode
+  const storedSourceCode = getStoredSourceCode();
+  if (storedSourceCode !== null) {
+    console.log('Using stored sourceCode:', storedSourceCode);
+    return storedSourceCode;
+  }
+
+  // No stored sourceCode, get the next sequential one from the server
+  const { data, error } = await supabase.rpc('get_next_source_code', {
+    playspace_id: 1,
+  });
+
+  if (error) {
+    console.error('Error getting next sourceCode:', error);
+    // Fall back to a random sourceCode
+    const fallbackSourceCode = Math.floor(Math.random() * 256);
+    saveSourceCode(fallbackSourceCode);
+    return fallbackSourceCode;
+  }
+
+  const newSourceCode = data as number;
+  console.log('Assigned new sourceCode:', newSourceCode);
+
+  // Create a Connected event with this sourceCode
+  const snowportId = performance.now() * 2 ** 16 + newSourceCode * 2 ** 8;
+  const connectedEvent: DatabaseEvent = {
+    playspace: 1,
+    snowportId: snowportId,
+    componentID: 0,
+    eventType: EventType.Connected,
+  };
+
+  // Insert the Connected event into the database
+  await supabase.from('events').insert(connectedEvent);
+
+  // Save the sourceCode to localStorage
+  saveSourceCode(newSourceCode);
+
+  return newSourceCode;
+}
+
 export function useSupabaseSurface(
   supabase: SupabaseClient,
 ): [Render, SetSurface, React.MutableRefObject<SupabaseSurface>] {
   const surfaceRef = useRef(new SupabaseSurface());
 
   useEffect(() => {
-    supabase
-      .from('events')
-      .select('*')
-      .then(({ data }): void => {
-        surfaceRef.current = surfaceRef.current.setDatabaseEvents(
-          (data || []).map((event) =>
-            processDatabaseEvent(event as DatabaseEvent),
-          ),
-        );
-      });
+    // Initialize sourceCode first
+    initializeSourceCode(supabase).then((sourceCode) => {
+      setSourceCode(sourceCode);
 
-    supabase
-      .channel('changes')
-      .on(
-        'postgres_changes',
-        {
-          event: '*',
-          schema: 'public',
-          table: 'events',
-        },
-        (payload: RealtimePostgresChangesPayload<DatabaseEvent>) => {
-          try {
-            if (payload.eventType === 'INSERT') {
-              const dbEvent = payload.new;
-              const event = processDatabaseEvent(dbEvent);
-              surfaceRef.current = surfaceRef.current.setDatabaseEvents([
-                event,
-              ]);
+      // Now load existing events
+      supabase
+        .from('events')
+        .select('*')
+        .then(({ data }): void => {
+          surfaceRef.current = surfaceRef.current.setDatabaseEvents(
+            (data || []).map((event) =>
+              processDatabaseEvent(event as DatabaseEvent),
+            ),
+          );
+        });
+
+      // Subscribe to realtime changes
+      supabase
+        .channel('changes')
+        .on(
+          'postgres_changes',
+          {
+            event: '*',
+            schema: 'public',
+            table: 'events',
+          },
+          (payload: RealtimePostgresChangesPayload<DatabaseEvent>) => {
+            try {
+              if (payload.eventType === 'INSERT') {
+                const dbEvent = payload.new;
+                const event = processDatabaseEvent(dbEvent);
+                surfaceRef.current = surfaceRef.current.setDatabaseEvents([
+                  event,
+                ]);
+              }
+            } catch (error) {
+              console.error('Error processing realtime event:', error);
             }
-          } catch (error) {
-            console.error('Error processing realtime event:', error);
-          }
-        },
-      )
-      .subscribe();
+          },
+        )
+        .subscribe();
+    });
   }, []);
 
   return [

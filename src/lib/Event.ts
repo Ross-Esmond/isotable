@@ -3,6 +3,7 @@ import { ingestSnowportId } from './logicClock';
 import type { List } from 'immutable';
 
 export enum EventType {
+  Connected = 'connected',
   Create = 'create',
   Grab = 'grab',
   Drag = 'drag',
@@ -21,6 +22,14 @@ export interface DatabaseEvent {
 export function processDatabaseEvent(input: DatabaseEvent): Event {
   ingestSnowportId(input.snowportId);
   switch (input.eventType) {
+    case EventType.Connected:
+      return {
+        entity: input.playspace,
+        type: EventType.Connected,
+        snowportId: input.snowportId,
+        pointerId: 0,
+        componentId: 0,
+      } as ConnectedEvent;
     case EventType.Create:
       return {
         entity: input.playspace,
@@ -100,6 +109,10 @@ export interface EventBase {
   readonly componentId: number;
 }
 
+export interface ConnectedEvent extends EventBase {
+  readonly type: EventType.Connected;
+}
+
 export interface CreatedEvent extends EventBase {
   readonly type: EventType.Create;
   readonly x: number;
@@ -122,4 +135,9 @@ export interface DropEvent extends EventBase {
   readonly type: EventType.Drop;
 }
 
-export type Event = CreatedEvent | GrabEvent | DragEvent | DropEvent;
+export type Event =
+  | ConnectedEvent
+  | CreatedEvent
+  | GrabEvent
+  | DragEvent
+  | DropEvent;
