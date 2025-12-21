@@ -39,7 +39,12 @@ export class Component {
     return new Component(this.id, x, y, this.width, this.height, this.grab);
   }
 
-  setGrab(snowportId: number, pointerId: number, offsetX: number, offsetY: number): Component {
+  setGrab(
+    snowportId: number,
+    pointerId: number,
+    offsetX: number,
+    offsetY: number,
+  ): Component {
     return new Component(this.id, this.x, this.y, this.width, this.height, {
       snowportId,
       pointerId,

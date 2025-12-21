@@ -69,16 +69,13 @@ export function processDatabaseEvent(input: DatabaseEvent): Event {
 }
 
 export function createDatabaseUpserts(
-  databaseEvents: Array<Event>,
-  events: List<Event>,
-): any {
-  const dbIds = Set<number>().asMutable();
-  for (const dbEvent of databaseEvents) {
-    dbIds.add(dbEvent.snowportId);
-  }
-  const upserts = [] as Array<DatabaseEvent>;
-  for (const event of events) {
-    if (!dbIds.has(event.snowportId)) {
+  databaseEvents: Map<number, Event>,
+  events: Map<number, Event>,
+): Array<DatabaseEvent> {
+  const upserts: Array<DatabaseEvent> = [];
+
+  for (const [snowportId, event] of events.entries()) {
+    if (!databaseEvents.has(snowportId)) {
       upserts.push({
         componentID: event.componentId,
         eventType: event.type,
@@ -89,6 +86,7 @@ export function createDatabaseUpserts(
       });
     }
   }
+
   return upserts;
 }
 

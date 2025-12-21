@@ -56,6 +56,7 @@ The Surface abstraction manages the application's canvas/workspace:
 - **Camera** (`src/lib/Camera.ts`): Immutable camera with pan/zoom, pointer tracking, and world-to-screen coordinate conversion
 
 Key patterns:
+
 - All state is immutable (using Immutable.js)
 - New events are appended, never removed (event sourcing)
 - Components are derived from events via `processEvents()`
@@ -92,6 +93,7 @@ src/
 ### Immutability
 
 All state is immutable using Immutable.js:
+
 - Use `.asMutable()` for batch updates, then `.asImmutable()`
 - All classes return new instances on mutation (Surface, Camera, Component)
 - Events are append-only; removing events throws an error
@@ -106,6 +108,7 @@ All state is immutable using Immutable.js:
 ### Environment Variables
 
 Configured via T3 Env in `src/env.ts`:
+
 - Server vars: `SERVER_URL`
 - Client vars (must start with `VITE_`): `VITE_APP_TITLE`, `VITE_SUPABASE_URL`, `VITE_SUPABASE_ANON_KEY`
 - Import and use: `import { env } from '@/env'`
@@ -113,6 +116,7 @@ Configured via T3 Env in `src/env.ts`:
 ### Adding UI Components
 
 Use shadcn/ui for new components:
+
 ```bash
 pnpx shadcn@latest add button
 ```
@@ -126,6 +130,7 @@ pnpx shadcn@latest add button
 ### Path Aliases
 
 TypeScript is configured with `@/*` mapping to `src/*`:
+
 ```typescript
 import { Surface } from '@/lib/Surface';
 ```

@@ -2,11 +2,7 @@ import { Map } from 'immutable';
 import { EventType } from './Event';
 import { Component } from './Component';
 import type {
-  CreatedEvent,
-  DragEvent,
-  DropEvent,
   Event,
-  GrabEvent,
 } from './Event';
 
 let lastEvents = Map<number, Event>();
@@ -17,7 +13,9 @@ export function resetEvents() {
   lastComponents = Map<number, Component>();
 }
 
-export function processEvents(nextEvents: Map<number, Event>): Map<number, Component> {
+export function processEvents(
+  nextEvents: Map<number, Event>,
+): Map<number, Component> {
   const lastKeys = lastEvents.keySeq().toSet();
   const nextKeys = nextEvents.keySeq().toSet();
 
@@ -37,37 +35,28 @@ export function processEvents(nextEvents: Map<number, Event>): Map<number, Compo
   for (const nextKey of nextOnly) {
     const event = nextEvents.get(nextKey)!;
     if (event.type === EventType.Create) {
-      const { componentId, x, y } = event as CreatedEvent;
-      nextComponents.set(
-        componentId,
-        Component.create(componentId, x, y),
-      );
+      const { componentId, x, y } = event;
+      nextComponents.set(componentId, Component.create(componentId, x, y));
     } else if (event.type === EventType.Grab) {
-      const { componentId, pointerId, snowportId, x, y } = event as GrabEvent;
+      const { componentId, pointerId, snowportId, x, y } = event;
       grabs.update(
         componentId,
         [-1, 0, [0, 0]],
-        ([lastId, id, [lastX, lastY]]) => (
-          snowportId > lastId ? [snowportId, pointerId, [x, y]] : [lastId, id, [lastX, lastY]]
-        ),
+        ([lastId, id, [lastX, lastY]]) =>
+          snowportId > lastId
+            ? [snowportId, pointerId, [x, y]]
+            : [lastId, id, [lastX, lastY]],
       );
     } else if (event.type === EventType.Drag) {
-      const { componentId, snowportId, x, y } = event as DragEvent;
-      moves.update(
-        componentId,
-        [-1, [0, 0]],
-        ([lastId, [lastX, lastY]]) => (
-          snowportId > lastId ? [snowportId, [x, y]] : [lastId, [lastX, lastY]]
-        ),
+      const { componentId, snowportId, x, y } = event;
+      moves.update(componentId, [-1, [0, 0]], ([lastId, [lastX, lastY]]) =>
+        snowportId > lastId ? [snowportId, [x, y]] : [lastId, [lastX, lastY]],
       );
-    } else if (event.type === EventType.Drop) {
-      const { componentId, pointerId, snowportId } = event as DropEvent;
-      drops.update(
-        componentId,
-        [-1, 0],
-        ([lastId, id]) => (
-          snowportId > lastId ? [snowportId, pointerId] : [lastId, id]
-        ),
+    } else {
+      // EventType.Drop
+      const { componentId, pointerId, snowportId } = event;
+      drops.update(componentId, [-1, 0], ([lastId, id]) =>
+        snowportId > lastId ? [snowportId, pointerId] : [lastId, id],
       );
     }
   }
@@ -98,7 +87,7 @@ export function processEvents(nextEvents: Map<number, Event>): Map<number, Compo
       // TODO deal with multiple pointerIds
       if ((component.grab?.snowportId ?? -1) < snowportId) {
         return component.removeGrab();
-      };
+      }
     });
   }
 

@@ -3,7 +3,8 @@ import * as THREE from 'three';
 import { useEffect, useRef } from 'react';
 import type { PointerEvent, WheelEvent } from 'react';
 import supabase from '@/lib/supabase';
-import {useSupabaseSurface} from '@/lib/SupabaseSurface';
+import { useSupabaseSurface } from '@/lib/SupabaseSurface';
+import { useEventUploader } from '@/lib/useEventUploader';
 
 export const Route = createFileRoute('/')({ component: App });
 
@@ -11,7 +12,11 @@ function App() {
   const shell = useRef<HTMLDivElement | null>(null);
   const rendererRef = useRef<THREE.WebGLRenderer | null>(null);
 
-  const [render, setSurface] = useSupabaseSurface(supabase);
+  const [render, setSurface, surfaceRef] = useSupabaseSurface(supabase);
+  const { uploadDebounced, uploadImmediate } = useEventUploader(
+    supabase,
+    surfaceRef,
+  );
 
   useEffect(() => {
     if (shell.current == null) return;
@@ -47,49 +52,42 @@ function App() {
   }, []);
 
   function onWheel(event: WheelEvent<HTMLDivElement>) {
-    setSurface(surface => surface.updateCamera((camera) =>
-      camera.zoom(event.deltaY / 120),
-    ));
+    setSurface((surface) =>
+      surface.updateCamera((camera) => camera.zoom(event.deltaY / 120)),
+    );
   }
 
   function pointerdown(event: PointerEvent) {
     shell.current?.setPointerCapture(event.pointerId);
-    setSurface(surface => surface.grab(
-      event.pointerId,
-      event.clientX,
-      event.clientY,
-      window.innerWidth,
-      window.innerHeight,
-    ));
+    setSurface((surface) =>
+      surface.grab(
+        event.pointerId,
+        event.clientX,
+        event.clientY,
+        window.innerWidth,
+        window.innerHeight,
+      ),
+    );
+    uploadDebounced();
   }
 
   function pointermove(event: PointerEvent) {
-    setSurface(surface => surface.drag(
-      event.pointerId,
-      event.clientX,
-      event.clientY,
-      window.innerWidth,
-      window.innerHeight,
-    ));
-    /*
-    if (
-      databaseEvents != null &&
-      surfaceRef.current != null &&
-      surfaceRef.current.events.count() > databaseEvents.length
-    ) {
-      const what = supabase
-        .from('events')
-        .upsert(
-          createDatabaseUpserts(databaseEvents, surfaceRef.current.events),
-        );
-      what.then((what) => { console.log(what) });
-    }
-     */
+    setSurface((surface) =>
+      surface.drag(
+        event.pointerId,
+        event.clientX,
+        event.clientY,
+        window.innerWidth,
+        window.innerHeight,
+      ),
+    );
+    uploadDebounced();
   }
 
   function pointerup(event: PointerEvent) {
     shell.current?.releasePointerCapture(event.pointerId);
-    setSurface(surface => surface.drop(event.pointerId));
+    setSurface((surface) => surface.drop(event.pointerId));
+    uploadImmediate();
   }
 
   return (

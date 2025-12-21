@@ -1,15 +1,22 @@
-import {Map} from "immutable";
-import {Surface} from "./Surface";
-import {DatabaseEvent, Event, processDatabaseEvent} from "./Event";
-import {SupabaseClient} from "@supabase/supabase-js";
-import {useEffect, useRef} from "react";
-import * as THREE from 'three';
+import { Map } from 'immutable';
+import { useEffect, useRef } from 'react';
+import { processDatabaseEvent } from './Event';
+import { Surface } from './Surface';
+import type { DatabaseEvent, Event } from './Event';
+import type {
+  RealtimePostgresChangesPayload,
+  SupabaseClient,
+} from '@supabase/supabase-js';
+import type * as THREE from 'three';
 
 export class SupabaseSurface {
   readonly surface: Surface;
   readonly databaseEvents: Map<number, Event>;
 
-  constructor(surface = Surface.create(), databaseEvents = Map<number, Event>()) {
+  constructor(
+    surface = Surface.create(),
+    databaseEvents = Map<number, Event>(),
+  ) {
     this.surface = surface;
     this.databaseEvents = databaseEvents;
   }
@@ -18,7 +25,7 @@ export class SupabaseSurface {
     return new SupabaseSurface(surface, this.databaseEvents);
   }
 
-  setDatabaseEvents(events: Event[]): SupabaseSurface {
+  setDatabaseEvents(events: Array<Event>): SupabaseSurface {
     const nextDatabaseEvents = this.databaseEvents.asMutable();
     const nextEvents = this.surface.events.asMutable();
     for (const event of events) {
@@ -30,17 +37,16 @@ export class SupabaseSurface {
 
     const surface = this.surface.setEvents(nextEvents.asImmutable());
 
-    return new SupabaseSurface(
-      surface,
-      nextDatabaseEvents.asImmutable(),
-    );
+    return new SupabaseSurface(surface, nextDatabaseEvents.asImmutable());
   }
 }
 
 type Render = (renderer: THREE.WebGLRenderer) => void;
 type SetSurface = (surface: Surface | ((surface: Surface) => Surface)) => void;
 
-export function useSupabaseSurface(supabase: SupabaseClient): [Render, SetSurface] {
+export function useSupabaseSurface(
+  supabase: SupabaseClient,
+): [Render, SetSurface, React.MutableRefObject<SupabaseSurface>] {
   const surfaceRef = useRef(new SupabaseSurface());
 
   useEffect(() => {
@@ -48,12 +54,15 @@ export function useSupabaseSurface(supabase: SupabaseClient): [Render, SetSurfac
       .from('events')
       .select('*')
       .then(({ data }): void => {
-        surfaceRef.current = surfaceRef.current
-          .setDatabaseEvents((data || []).map((event) =>
-            processDatabaseEvent(event as DatabaseEvent)));
+        surfaceRef.current = surfaceRef.current.setDatabaseEvents(
+          (data || []).map((event) =>
+            processDatabaseEvent(event as DatabaseEvent),
+          ),
+        );
       });
 
-    supabase.channel('changes')
+    supabase
+      .channel('changes')
       .on(
         'postgres_changes',
         {
@@ -61,17 +70,34 @@ export function useSupabaseSurface(supabase: SupabaseClient): [Render, SetSurfac
           schema: 'public',
           table: 'events',
         },
-        (what) => console.log(what),
+        (payload: RealtimePostgresChangesPayload<DatabaseEvent>) => {
+          try {
+            if (payload.eventType === 'INSERT') {
+              const dbEvent = payload.new;
+              const event = processDatabaseEvent(dbEvent);
+              surfaceRef.current = surfaceRef.current.setDatabaseEvents([
+                event,
+              ]);
+            }
+          } catch (error) {
+            console.error('Error processing realtime event:', error);
+          }
+        },
       )
       .subscribe();
   }, []);
-  
+
   return [
     (renderer) => {
-      surfaceRef.current = surfaceRef.current.setSurface(surfaceRef.current.surface.render(renderer))
+      surfaceRef.current = surfaceRef.current.setSurface(
+        surfaceRef.current.surface.render(renderer),
+      );
     },
     (value) => {
-      surfaceRef.current = surfaceRef.current.setSurface(typeof value === 'function' ? value(surfaceRef.current.surface) : value);
-    }
+      surfaceRef.current = surfaceRef.current.setSurface(
+        typeof value === 'function' ? value(surfaceRef.current.surface) : value,
+      );
+    },
+    surfaceRef,
   ];
 }

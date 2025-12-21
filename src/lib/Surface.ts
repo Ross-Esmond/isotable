@@ -135,14 +135,14 @@ export class Surface {
         height,
       );
       return this.addEvent({
-          entity: 0,
-          type: EventType.Drag,
-          snowportId: takeSnowportId(),
-          pointerId: id,
-          componentId: component.id,
-          x: xWorld - component.grab.offsetX,
-          y: yWorld - component.grab.offsetY,
-        } as DragEvent);
+        entity: 0,
+        type: EventType.Drag,
+        snowportId: takeSnowportId(),
+        pointerId: id,
+        componentId: component.id,
+        x: xWorld - component.grab.offsetX,
+        y: yWorld - component.grab.offsetY,
+      } as DragEvent);
     } else {
       return this.setCamera(this.camera.updatePointer(id, x, y, width, height));
     }
@@ -153,12 +153,12 @@ export class Surface {
     const component = components.find((c) => c.grab?.pointerId === id);
     if (component?.grab) {
       return this.addEvent({
-          entity: 0,
-          type: EventType.Drop,
-          snowportId: takeSnowportId(),
-          pointerId: id,
-          componentId: component.id,
-        });
+        entity: 0,
+        type: EventType.Drop,
+        snowportId: takeSnowportId(),
+        pointerId: id,
+        componentId: component.id,
+      });
     } else {
       return this.setCamera(this.camera.removePointer(id));
     }
