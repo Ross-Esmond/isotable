@@ -12,6 +12,10 @@ export class Surface {
   readonly camera: Camera;
 
   readonly events: Map<number, Event>;
+  readonly ephemeralDrags: Map<
+    number,
+    { componentId: number; x: number; y: number }
+  >;
 
   readonly meshes: Map<number, THREE.Mesh>;
   private readonly threeScene: THREE.Scene;
@@ -20,6 +24,7 @@ export class Surface {
   private constructor(
     camera: Camera,
     events: Map<number, Event>,
+    ephemeralDrags: Map<number, { componentId: number; x: number; y: number }>,
     meshes: Map<number, THREE.Mesh>,
     threeScene: THREE.Scene,
     threeCamera: THREE.Camera,
@@ -27,6 +32,7 @@ export class Surface {
     this.camera = camera;
 
     this.events = events;
+    this.ephemeralDrags = ephemeralDrags;
 
     this.meshes = meshes;
     this.threeScene = threeScene;
@@ -39,6 +45,7 @@ export class Surface {
     return new Surface(
       new Camera(),
       Map<number, Event>(),
+      Map<number, { componentId: number; x: number; y: number }>(),
       Map<number, THREE.Mesh>(),
       new THREE.Scene(),
       camera,
@@ -49,6 +56,7 @@ export class Surface {
     return new Surface(
       camera,
       this.events,
+      this.ephemeralDrags,
       this.meshes,
       this.threeScene,
       this.threeCamera,
@@ -63,6 +71,7 @@ export class Surface {
     return new Surface(
       this.camera,
       events,
+      this.ephemeralDrags,
       this.meshes,
       this.threeScene,
       this.threeCamera,
@@ -73,6 +82,7 @@ export class Surface {
     return new Surface(
       this.camera,
       this.events.set(event.snowportId, event),
+      this.ephemeralDrags,
       this.meshes,
       this.threeScene,
       this.threeCamera,
@@ -134,31 +144,72 @@ export class Surface {
         width,
         height,
       );
-      return this.addEvent({
-        entity: 0,
-        type: EventType.Drag,
-        snowportId: takeSnowportId(),
-        pointerId: id,
-        componentId: component.id,
-        x: xWorld - component.grab.offsetX,
-        y: yWorld - component.grab.offsetY,
-      } as DragEvent);
+      // Update ephemeral state instead of creating event
+      return new Surface(
+        this.camera,
+        this.events,
+        this.ephemeralDrags.set(id, {
+          componentId: component.id,
+          x: xWorld - component.grab.offsetX,
+          y: yWorld - component.grab.offsetY,
+        }),
+        this.meshes,
+        this.threeScene,
+        this.threeCamera,
+      );
     } else {
       return this.setCamera(this.camera.updatePointer(id, x, y, width, height));
     }
+  }
+
+  commitDrag(id: number): Surface {
+    const ephemeralDrag = this.ephemeralDrags.get(id);
+    if (!ephemeralDrag) {
+      return this;
+    }
+
+    // Create permanent drag event from ephemeral state
+    const dragEvent: DragEvent = {
+      entity: 0,
+      type: EventType.Drag,
+      snowportId: takeSnowportId(),
+      pointerId: id,
+      componentId: ephemeralDrag.componentId,
+      x: ephemeralDrag.x,
+      y: ephemeralDrag.y,
+    };
+
+    // Add event and keep ephemeral drag (for continued dragging)
+    return new Surface(
+      this.camera,
+      this.events.set(dragEvent.snowportId, dragEvent),
+      this.ephemeralDrags,
+      this.meshes,
+      this.threeScene,
+      this.threeCamera,
+    );
   }
 
   drop(id: number): Surface {
     const components = processEvents(this.events);
     const component = components.find((c) => c.grab?.pointerId === id);
     if (component?.grab) {
-      return this.addEvent({
-        entity: 0,
-        type: EventType.Drop,
-        snowportId: takeSnowportId(),
-        pointerId: id,
-        componentId: component.id,
-      });
+      const snowportId = takeSnowportId();
+      // Create drop event and clear ephemeral drag
+      return new Surface(
+        this.camera,
+        this.events.set(snowportId, {
+          entity: 0,
+          type: EventType.Drop,
+          snowportId,
+          pointerId: id,
+          componentId: component.id,
+        }),
+        this.ephemeralDrags.delete(id), // Clear ephemeral state
+        this.meshes,
+        this.threeScene,
+        this.threeCamera,
+      );
     } else {
       return this.setCamera(this.camera.removePointer(id));
     }
@@ -173,10 +224,18 @@ export class Surface {
     const meshes = this.meshes.asMutable();
 
     for (const [id, component] of components) {
+      // Check if there's an ephemeral drag for this component
+      const ephemeralDrag = Array.from(this.ephemeralDrags.values()).find(
+        (drag) => drag.componentId === id,
+      );
+
+      const displayX = ephemeralDrag ? ephemeralDrag.x : component.x;
+      const displayY = ephemeralDrag ? ephemeralDrag.y : component.y;
+
       if (meshes.has(id)) {
         const mesh = this.meshes.get(component.id);
         if (mesh) {
-          mesh.position.set(component.x, component.y, component.z);
+          mesh.position.set(displayX, displayY, component.z);
         }
       } else {
         const geometry = new THREE.BoxGeometry(
@@ -186,7 +245,7 @@ export class Surface {
         );
 
         const mesh = new THREE.Mesh(geometry, material);
-        mesh.position.set(component.x, component.y, component.z);
+        mesh.position.set(displayX, displayY, component.z);
         this.threeScene.add(mesh);
         meshes.set(component.id, mesh);
       }
@@ -197,6 +256,7 @@ export class Surface {
     return new Surface(
       this.camera,
       this.events,
+      this.ephemeralDrags,
       meshes.asImmutable(),
       this.threeScene,
       this.threeCamera,

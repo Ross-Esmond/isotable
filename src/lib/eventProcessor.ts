@@ -1,9 +1,7 @@
 import { Map } from 'immutable';
 import { EventType } from './Event';
 import { Component } from './Component';
-import type {
-  Event,
-} from './Event';
+import type { Event } from './Event';
 
 let lastEvents = Map<number, Event>();
 let lastComponents = Map<number, Component>();

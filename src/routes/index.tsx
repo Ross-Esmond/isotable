@@ -11,12 +11,11 @@ export const Route = createFileRoute('/')({ component: App });
 function App() {
   const shell = useRef<HTMLDivElement | null>(null);
   const rendererRef = useRef<THREE.WebGLRenderer | null>(null);
+  const commitDragTimerRef = useRef<number | null>(null);
+  const isCommitScheduledRef = useRef(false);
 
   const [render, setSurface, surfaceRef] = useSupabaseSurface(supabase);
-  const { uploadDebounced, uploadImmediate } = useEventUploader(
-    supabase,
-    surfaceRef,
-  );
+  const upload = useEventUploader(supabase, surfaceRef);
 
   useEffect(() => {
     if (shell.current == null) return;
@@ -51,6 +50,15 @@ function App() {
     };
   }, []);
 
+  useEffect(() => {
+    return () => {
+      if (commitDragTimerRef.current) {
+        clearTimeout(commitDragTimerRef.current);
+      }
+      isCommitScheduledRef.current = false;
+    };
+  }, []);
+
   function onWheel(event: WheelEvent<HTMLDivElement>) {
     setSurface((surface) =>
       surface.updateCamera((camera) => camera.zoom(event.deltaY / 120)),
@@ -68,7 +76,7 @@ function App() {
         window.innerHeight,
       ),
     );
-    uploadDebounced();
+    upload(); // Upload grab event immediately (after state update)
   }
 
   function pointermove(event: PointerEvent) {
@@ -81,13 +89,35 @@ function App() {
         window.innerHeight,
       ),
     );
-    uploadDebounced();
+
+    // Throttle recording drag event (every 300ms, not debounced)
+    if (!isCommitScheduledRef.current) {
+      isCommitScheduledRef.current = true;
+      commitDragTimerRef.current = window.setTimeout(() => {
+        setSurface((surface) => surface.commitDrag(event.pointerId));
+        upload(); // Upload immediately after recording
+        isCommitScheduledRef.current = false;
+        commitDragTimerRef.current = null;
+      }, 300);
+    }
   }
 
   function pointerup(event: PointerEvent) {
     shell.current?.releasePointerCapture(event.pointerId);
-    setSurface((surface) => surface.drop(event.pointerId));
-    uploadImmediate();
+
+    // Clear throttle timer and reset flag
+    if (commitDragTimerRef.current) {
+      clearTimeout(commitDragTimerRef.current);
+      commitDragTimerRef.current = null;
+    }
+    isCommitScheduledRef.current = false;
+
+    setSurface((surface) => {
+      const surfaceWithCommit = surface.commitDrag(event.pointerId);
+      const surfaceWithDrop = surfaceWithCommit.drop(event.pointerId);
+      return surfaceWithDrop;
+    });
+    upload(); // Upload both final drag and drop (after state update)
   }
 
   return (

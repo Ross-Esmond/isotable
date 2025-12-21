@@ -7,10 +7,9 @@ export function useEventUploader(
   supabase: SupabaseClient,
   surfaceRef: React.MutableRefObject<SupabaseSurface>,
 ) {
-  const uploadTimeoutRef = useRef<number | null>(null);
   const isUploadingRef = useRef(false);
 
-  const performUpload = useCallback(async () => {
+  const upload = useCallback(async () => {
     if (isUploadingRef.current) return;
 
     isUploadingRef.current = true;
@@ -32,15 +31,5 @@ export function useEventUploader(
     isUploadingRef.current = false;
   }, [supabase, surfaceRef]);
 
-  const uploadDebounced = useCallback(() => {
-    if (uploadTimeoutRef.current) clearTimeout(uploadTimeoutRef.current);
-    uploadTimeoutRef.current = window.setTimeout(performUpload, 300);
-  }, [performUpload]);
-
-  const uploadImmediate = useCallback(() => {
-    if (uploadTimeoutRef.current) clearTimeout(uploadTimeoutRef.current);
-    performUpload();
-  }, [performUpload]);
-
-  return { uploadDebounced, uploadImmediate };
+  return upload;
 }
