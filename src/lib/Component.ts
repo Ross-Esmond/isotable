@@ -32,7 +32,7 @@ export class Component {
   }
 
   static create(id: number, x: number, y: number): Component {
-    return new Component(id, x, y, 6.35, 8.89, null);
+    return new Component(id, x, y, 63.5, 88.9, null);
   }
 
   setPosition(x: number, y: number): Component {

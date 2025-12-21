@@ -5,6 +5,7 @@ import type { PointerEvent, WheelEvent } from 'react';
 import supabase from '@/lib/supabase';
 import { useSupabaseSurface } from '@/lib/SupabaseSurface';
 import { useEventUploader } from '@/lib/useEventUploader';
+import { smoothSteps } from '@/lib/utils';
 
 export const Route = createFileRoute('/')({ component: App });
 
@@ -90,7 +91,7 @@ function App() {
       ),
     );
 
-    // Throttle recording drag event (every 300ms, not debounced)
+    // Throttle recording drag event
     if (!isCommitScheduledRef.current) {
       isCommitScheduledRef.current = true;
       commitDragTimerRef.current = window.setTimeout(() => {
@@ -98,7 +99,7 @@ function App() {
         upload(); // Upload immediately after recording
         isCommitScheduledRef.current = false;
         commitDragTimerRef.current = null;
-      }, 300);
+      }, smoothSteps);
     }
   }
 

@@ -10,7 +10,7 @@ export class Camera {
   constructor(
     x = 0,
     y = 0,
-    squareSize = 100,
+    squareSize = 1000,
     pointers = Map<number, { x: number; y: number }>(),
   ) {
     this.x = x;

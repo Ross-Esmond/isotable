@@ -30,9 +30,7 @@ export function saveSourceCode(sourceCode: number): void {
   }
 
   if (sourceCode < 1 || sourceCode >= 256) {
-    throw new Error(
-      `Source code must be between 1 and 255, got ${sourceCode}`,
-    );
+    throw new Error(`Source code must be between 1 and 255, got ${sourceCode}`);
   }
 
   localStorage.setItem(SOURCE_CODE_KEY, sourceCode.toString());

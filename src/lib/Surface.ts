@@ -3,10 +3,24 @@ import * as THREE from 'three';
 import { Camera } from './Camera';
 import { EventType } from './Event';
 import { processEvents } from './eventProcessor';
-import { takeSnowportId } from './logicClock';
+import {
+  extractSourceCodeFromSnowportId,
+  getSourceCode,
+  takeSnowportId,
+} from './logicClock';
+import { smoothPosition, smoothSteps } from './utils';
 import type { DragEvent, Event, GrabEvent } from './Event';
+import type { vector2 } from './utils';
 
 const material = new THREE.MeshBasicMaterial({ color: 0xffffff });
+
+interface RemoteDrag {
+  componentId: number;
+  startPosition: vector2;
+  targetPosition: vector2;
+  startTime: number;
+  duration: number; // milliseconds
+}
 
 export class Surface {
   readonly camera: Camera;
@@ -16,6 +30,7 @@ export class Surface {
     number,
     { componentId: number; x: number; y: number }
   >;
+  readonly remoteDrags: Map<number, RemoteDrag>;
 
   readonly meshes: Map<number, THREE.Mesh>;
   private readonly threeScene: THREE.Scene;
@@ -25,6 +40,7 @@ export class Surface {
     camera: Camera,
     events: Map<number, Event>,
     ephemeralDrags: Map<number, { componentId: number; x: number; y: number }>,
+    remoteDrags: Map<number, RemoteDrag>,
     meshes: Map<number, THREE.Mesh>,
     threeScene: THREE.Scene,
     threeCamera: THREE.Camera,
@@ -33,6 +49,7 @@ export class Surface {
 
     this.events = events;
     this.ephemeralDrags = ephemeralDrags;
+    this.remoteDrags = remoteDrags;
 
     this.meshes = meshes;
     this.threeScene = threeScene;
@@ -46,6 +63,7 @@ export class Surface {
       new Camera(),
       Map<number, Event>(),
       Map<number, { componentId: number; x: number; y: number }>(),
+      Map<number, RemoteDrag>(),
       Map<number, THREE.Mesh>(),
       new THREE.Scene(),
       camera,
@@ -57,6 +75,7 @@ export class Surface {
       camera,
       this.events,
       this.ephemeralDrags,
+      this.remoteDrags,
       this.meshes,
       this.threeScene,
       this.threeCamera,
@@ -68,10 +87,37 @@ export class Surface {
   }
 
   setEvents(events: Map<number, Event>) {
+    // Check for new remote drag events
+    const localSourceCode = getSourceCode();
+    const components = processEvents(this.events);
+    let nextRemoteDrags = this.remoteDrags;
+
+    for (const [snowportId, event] of events.entries()) {
+      if (!this.events.has(snowportId) && event.type === EventType.Drag) {
+        const eventSourceCode = extractSourceCodeFromSnowportId(
+          event.snowportId,
+        );
+        if (eventSourceCode !== localSourceCode) {
+          // This is a remote drag event
+          const component = components.get(event.componentId);
+          if (component) {
+            nextRemoteDrags = nextRemoteDrags.set(event.componentId, {
+              componentId: event.componentId,
+              startPosition: [component.x, component.y],
+              targetPosition: [event.x, event.y],
+              startTime: performance.now(),
+              duration: smoothSteps,
+            });
+          }
+        }
+      }
+    }
+
     return new Surface(
       this.camera,
       events,
       this.ephemeralDrags,
+      nextRemoteDrags,
       this.meshes,
       this.threeScene,
       this.threeCamera,
@@ -83,6 +129,7 @@ export class Surface {
       this.camera,
       this.events.set(event.snowportId, event),
       this.ephemeralDrags,
+      this.remoteDrags,
       this.meshes,
       this.threeScene,
       this.threeCamera,
@@ -120,8 +167,8 @@ export class Surface {
         snowportId: takeSnowportId(),
         pointerId: id,
         componentId: result.id,
-        x: xWorld - result.x,
-        y: yWorld - result.y,
+        x: Math.round(xWorld - result.x),
+        y: Math.round(yWorld - result.y),
       } as GrabEvent);
     } else {
       return this.setCamera(this.camera.addPointer(id, x, y, width, height));
@@ -150,9 +197,10 @@ export class Surface {
         this.events,
         this.ephemeralDrags.set(id, {
           componentId: component.id,
-          x: xWorld - component.grab.offsetX,
-          y: yWorld - component.grab.offsetY,
+          x: Math.round(xWorld - component.grab.offsetX),
+          y: Math.round(yWorld - component.grab.offsetY),
         }),
+        this.remoteDrags,
         this.meshes,
         this.threeScene,
         this.threeCamera,
@@ -184,6 +232,7 @@ export class Surface {
       this.camera,
       this.events.set(dragEvent.snowportId, dragEvent),
       this.ephemeralDrags,
+      this.remoteDrags,
       this.meshes,
       this.threeScene,
       this.threeCamera,
@@ -206,6 +255,7 @@ export class Surface {
           componentId: component.id,
         }),
         this.ephemeralDrags.delete(id), // Clear ephemeral state
+        this.remoteDrags,
         this.meshes,
         this.threeScene,
         this.threeCamera,
@@ -222,15 +272,46 @@ export class Surface {
     const components = processEvents(this.events);
 
     const meshes = this.meshes.asMutable();
+    const now = performance.now();
+    let nextRemoteDrags = this.remoteDrags;
 
     for (const [id, component] of components) {
-      // Check if there's an ephemeral drag for this component
+      // Check if there's an ephemeral drag for this component (local drag)
       const ephemeralDrag = Array.from(this.ephemeralDrags.values()).find(
         (drag) => drag.componentId === id,
       );
 
-      const displayX = ephemeralDrag ? ephemeralDrag.x : component.x;
-      const displayY = ephemeralDrag ? ephemeralDrag.y : component.y;
+      let displayX = component.x;
+      let displayY = component.y;
+
+      if (ephemeralDrag) {
+        // Local drag takes priority
+        displayX = ephemeralDrag.x;
+        displayY = ephemeralDrag.y;
+      } else {
+        // Check for remote drag
+        const remoteDrag = this.remoteDrags.get(id);
+        if (remoteDrag) {
+          const elapsed = now - remoteDrag.startTime;
+          const t = Math.min(elapsed / remoteDrag.duration, 1.0);
+
+          if (t >= 1.0) {
+            // Animation complete, use target position and remove from remoteDrags
+            displayX = remoteDrag.targetPosition[0];
+            displayY = remoteDrag.targetPosition[1];
+            nextRemoteDrags = nextRemoteDrags.delete(id);
+          } else {
+            // Interpolate using smoothPosition
+            const [smoothX, smoothY] = smoothPosition(
+              t,
+              remoteDrag.startPosition,
+              remoteDrag.targetPosition,
+            );
+            displayX = smoothX;
+            displayY = smoothY;
+          }
+        }
+      }
 
       if (meshes.has(id)) {
         const mesh = this.meshes.get(component.id);
@@ -257,6 +338,7 @@ export class Surface {
       this.camera,
       this.events,
       this.ephemeralDrags,
+      nextRemoteDrags,
       meshes.asImmutable(),
       this.threeScene,
       this.threeCamera,

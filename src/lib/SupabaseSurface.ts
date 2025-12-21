@@ -46,9 +46,7 @@ export class SupabaseSurface {
 type Render = (renderer: THREE.WebGLRenderer) => void;
 type SetSurface = (surface: Surface | ((surface: Surface) => Surface)) => void;
 
-async function initializeSourceCode(
-  supabase: SupabaseClient,
-): Promise<number> {
+async function initializeSourceCode(supabase: SupabaseClient): Promise<number> {
   // Check if we have a stored sourceCode
   const storedSourceCode = getStoredSourceCode();
   if (storedSourceCode !== null) {

@@ -11,15 +11,22 @@ let sourceCode = -1; // Will be set when client connects
 
 export function setSourceCode(code: number) {
   if (code < 0 || code >= 256) {
-    throw new Error(
-      `Source code must be between 0 and 255, got ${code}`,
-    );
+    throw new Error(`Source code must be between 0 and 255, got ${code}`);
   }
   sourceCode = code;
 }
 
 export function getSourceCode(): number {
   return sourceCode;
+}
+
+/**
+ * Extracts the sourceCode from a snowportId
+ * The snowportId format is: 36 bits time | 8 bits source | 8 bits index
+ */
+export function extractSourceCodeFromSnowportId(snowportId: number): number {
+  // Remove the index part (last 8 bits) and get the source part (next 8 bits)
+  return Math.floor(snowportId / 2 ** 8) % 256;
 }
 
 export function takeSnowportId(): number {

@@ -1,6 +1,4 @@
-import { Set } from 'immutable';
 import { ingestSnowportId } from './logicClock';
-import type { List } from 'immutable';
 
 export enum EventType {
   Connected = 'connected',
