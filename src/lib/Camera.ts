@@ -37,7 +37,7 @@ export class Camera {
   }
 
   zoom(factor: number): Camera {
-    return this.updateSquareSize((s) => Math.max(10, s + factor * 10));
+    return this.updateSquareSize((s) => Math.max(10, s ** (1 + factor * .05)));
   }
 
   getWorldPosition(

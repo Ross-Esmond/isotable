@@ -62,7 +62,7 @@ function App() {
 
   function onWheel(event: WheelEvent<HTMLDivElement>) {
     setSurface((surface) =>
-      surface.updateCamera((camera) => camera.zoom(event.deltaY / 120)),
+      surface.updateCamera((camera) => camera.zoom(event.deltaY / 114)),
     );
   }
 
