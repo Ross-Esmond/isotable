@@ -1,5 +1,5 @@
 let currentTime = 0;
-let offsetTime = -1;
+let offsetTime = 0;
 // the next index that should be used
 let nextIndex = 0;
 let sourceCode = -1; // Will be set when client connects
@@ -8,6 +8,13 @@ let sourceCode = -1; // Will be set when client connects
 // 36 bits for time in milliseconds (little over 2 years)
 // 8 bits for 256 possible sources (usually players)
 // 8 bits for 256 events per source per millisecond
+
+export function resetLogicClock() {
+  currentTime = 0;
+  offsetTime = 0;
+  nextIndex = 0;
+  sourceCode = -1;
+}
 
 export function setSourceCode(code: number) {
   if (code < 0 || code >= 256) {
@@ -29,16 +36,20 @@ export function extractSourceCodeFromSnowportId(snowportId: number): number {
   return Math.floor(snowportId / 2 ** 8) % 256;
 }
 
+/**
+ * Extracts the timestamp from a snowportId
+ */
+export function extractTimestampFromSnowportId(snowportId: number): number {
+  return Math.floor(snowportId / (2 ** 16));
+}
+
 export function takeSnowportId(): number {
-  if (offsetTime < 0) {
-    offsetTime = performance.now();
-  }
   if (sourceCode < 0) {
     throw new Error('Source code not set. Call setSourceCode() first.');
   } else if (sourceCode === 0) {
     throw new Error('Source code is 0, which is reserved.');
   }
-  const now = performance.now() - offsetTime;
+  const now = Math.floor(performance.now()) + offsetTime;
   if (now > currentTime) {
     currentTime = now;
     nextIndex = 0;
@@ -59,12 +70,12 @@ export function takeSnowportId(): number {
 
 export function ingestSnowportId(snowportId: number) {
   const indexPart = snowportId % 256;
-  const timePart = Math.floor(snowportId / 2 ** 16);
+  const timePart = extractTimestampFromSnowportId(snowportId);
   if (timePart > currentTime) {
     currentTime = timePart;
-    offsetTime = performance.now() - currentTime;
+    offsetTime = currentTime - Math.floor(performance.now());
     nextIndex = 0;
-  } else if (snowportId === currentTime) {
+  } else if (timePart === currentTime) {
     nextIndex = Math.max(nextIndex, indexPart + 1);
   }
 }
