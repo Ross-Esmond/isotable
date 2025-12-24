@@ -90,7 +90,7 @@ async function initializeSourceCode(supabase: SupabaseClient): Promise<number> {
 
 export function useSupabaseSurface(
   supabase: SupabaseClient,
-): [Render, SetSurface, React.MutableRefObject<SupabaseSurface>] {
+): [Render, SetSurface, React.RefObject<SupabaseSurface>] {
   const surfaceRef = useRef(new SupabaseSurface());
 
   useEffect(() => {
