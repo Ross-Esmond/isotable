@@ -46,7 +46,10 @@ export class SupabaseSurface {
 type Render = (renderer: THREE.WebGLRenderer) => void;
 type SetSurface = (surface: Surface | ((surface: Surface) => Surface)) => void;
 
-async function initializeSourceCode(supabase: SupabaseClient): Promise<number> {
+async function initializeSourceCode(
+  supabase: SupabaseClient,
+  playspaceId: number,
+): Promise<number> {
   // Check if we have a stored sourceCode
   const storedSourceCode = getStoredSourceCode();
   if (storedSourceCode !== null) {
@@ -56,7 +59,7 @@ async function initializeSourceCode(supabase: SupabaseClient): Promise<number> {
 
   // No stored sourceCode, get the next sequential one from the server
   const { data, error } = await supabase.rpc('get_next_source_code', {
-    playspace_id: 1,
+    playspace_id: playspaceId,
   });
 
   if (error) {
@@ -73,7 +76,7 @@ async function initializeSourceCode(supabase: SupabaseClient): Promise<number> {
   // Create a Connected event with this sourceCode
   const snowportId = performance.now() * 2 ** 16 + newSourceCode * 2 ** 8;
   const connectedEvent: DatabaseEvent = {
-    playspace: 1,
+    playspace: playspaceId,
     snowportId: snowportId,
     componentID: 0,
     eventType: EventType.Connected,
@@ -90,18 +93,20 @@ async function initializeSourceCode(supabase: SupabaseClient): Promise<number> {
 
 export function useSupabaseSurface(
   supabase: SupabaseClient,
+  playspaceId = 1,
 ): [Render, SetSurface, React.RefObject<SupabaseSurface>] {
   const surfaceRef = useRef(new SupabaseSurface());
 
   useEffect(() => {
     // Initialize sourceCode first
-    initializeSourceCode(supabase).then((sourceCode) => {
+    initializeSourceCode(supabase, playspaceId).then((sourceCode) => {
       setSourceCode(sourceCode);
 
-      // Now load existing events
+      // Now load existing events for this playspace
       supabase
         .from('events')
         .select('*')
+        .eq('playspace', playspaceId)
         .then(({ data }): void => {
           surfaceRef.current = surfaceRef.current.setDatabaseEvents(
             (data || []).map((event) =>
@@ -110,15 +115,16 @@ export function useSupabaseSurface(
           );
         });
 
-      // Subscribe to realtime changes
+      // Subscribe to realtime changes for this playspace
       supabase
-        .channel('changes')
+        .channel(`changes:${playspaceId}`)
         .on(
           'postgres_changes',
           {
             event: '*',
             schema: 'public',
             table: 'events',
+            filter: `playspace=eq.${playspaceId}`,
           },
           (payload: RealtimePostgresChangesPayload<DatabaseEvent>) => {
             try {
@@ -136,7 +142,7 @@ export function useSupabaseSurface(
         )
         .subscribe();
     });
-  }, []);
+  }, [playspaceId]);
 
   return [
     (renderer) => {

@@ -6,6 +6,7 @@ import type { SupabaseSurface } from './SupabaseSurface';
 export function useEventUploader(
   supabase: SupabaseClient,
   surfaceRef: React.MutableRefObject<SupabaseSurface>,
+  playspaceId: number,
 ) {
   const isUploadingRef = useRef(false);
 
@@ -14,7 +15,11 @@ export function useEventUploader(
 
     isUploadingRef.current = true;
     const { surface, databaseEvents } = surfaceRef.current;
-    const upserts = createDatabaseUpserts(databaseEvents, surface.events);
+    const upserts = createDatabaseUpserts(
+      databaseEvents,
+      surface.events,
+      playspaceId,
+    );
 
     if (upserts.length > 0) {
       const { error } = await supabase.from('events').upsert(upserts);
@@ -29,7 +34,7 @@ export function useEventUploader(
     }
 
     isUploadingRef.current = false;
-  }, [supabase, surfaceRef]);
+  }, [supabase, surfaceRef, playspaceId]);
 
   return upload;
 }

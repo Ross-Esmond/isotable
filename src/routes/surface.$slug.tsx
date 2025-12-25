@@ -6,17 +6,68 @@ import supabase from '@/lib/supabase';
 import { useSupabaseSurface } from '@/lib/SupabaseSurface';
 import { useEventUploader } from '@/lib/useEventUploader';
 import { smoothSteps } from '@/lib/utils';
+import { usePlayspaceAccess } from '@/hooks/usePlayspaceAccess';
 
-export const Route = createFileRoute('/surface')({ component: App });
+export const Route = createFileRoute('/surface/$slug')({
+  component: SurfaceWithSlug,
+  // Loader to validate slug and fetch playspace ID
+  loader: async ({ params }) => {
+    const { data } = await supabase
+      .from('playspaces')
+      .select('id, slug')
+      .eq('slug', params.slug)
+      .single();
 
-function App() {
+    if (!data) {
+      throw new Error('Playspace not found');
+    }
+
+    return { playspaceId: data.id, slug: data.slug };
+  },
+});
+
+function SurfaceWithSlug() {
+  const { playspaceId, slug } = Route.useLoaderData();
+  const { hasAccess, loading, grantAccess } = usePlayspaceAccess(slug);
+
+  // Grant access on mount (optimistic)
+  useEffect(() => {
+    if (!hasAccess && !loading) {
+      grantAccess();
+    }
+  }, [hasAccess, loading, grantAccess]);
+
+  // Show loading state while checking access
+  if (loading) {
+    return (
+      <div className="flex min-h-screen items-center justify-center bg-gradient-to-b from-slate-900 via-slate-800 to-slate-900">
+        <div className="text-lg text-white">Loading playspace...</div>
+      </div>
+    );
+  }
+
+  if (!hasAccess) {
+    return (
+      <div className="flex min-h-screen items-center justify-center bg-gradient-to-b from-slate-900 via-slate-800 to-slate-900">
+        <div className="text-lg text-red-400">Access denied</div>
+      </div>
+    );
+  }
+
+  return <SurfaceApp playspaceId={playspaceId} />;
+}
+
+function SurfaceApp({ playspaceId }: { playspaceId: number }) {
   const shell = useRef<HTMLDivElement | null>(null);
   const rendererRef = useRef<THREE.WebGLRenderer | null>(null);
   const commitDragTimerRef = useRef<number | null>(null);
   const isCommitScheduledRef = useRef(false);
 
-  const [render, setSurface, surfaceRef] = useSupabaseSurface(supabase);
-  const upload = useEventUploader(supabase, surfaceRef);
+  const [render, setSurface, surfaceRef] = useSupabaseSurface(
+    supabase,
+    playspaceId,
+  );
+  const upload = useEventUploader(supabase, surfaceRef, playspaceId);
 
   useEffect(() => {
     if (shell.current == null) return;

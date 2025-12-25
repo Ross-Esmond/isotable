@@ -78,6 +78,7 @@ export function processDatabaseEvent(input: DatabaseEvent): Event {
 export function createDatabaseUpserts(
   databaseEvents: Map<number, Event>,
   events: Map<number, Event>,
+  playspaceId: number,
 ): Array<DatabaseEvent> {
   const upserts: Array<DatabaseEvent> = [];
 
@@ -86,7 +87,7 @@ export function createDatabaseUpserts(
       upserts.push({
         componentID: event.componentId,
         eventType: event.type,
-        playspace: 1,
+        playspace: playspaceId,
         snowportId: event.snowportId,
         x: event.x,
         y: event.y,

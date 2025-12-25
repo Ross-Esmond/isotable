@@ -10,24 +10,19 @@
 
 import { Route as rootRouteImport } from './routes/__root'
 import { Route as VerifyEmailRouteImport } from './routes/verify-email'
-import { Route as SurfaceRouteImport } from './routes/surface'
 import { Route as SignupRouteImport } from './routes/signup'
 import { Route as ResetPasswordRouteImport } from './routes/reset-password'
 import { Route as LoginRouteImport } from './routes/login'
 import { Route as ForgotPasswordRouteImport } from './routes/forgot-password'
 import { Route as IndexRouteImport } from './routes/index'
 import { Route as AccountIndexRouteImport } from './routes/account/index'
+import { Route as SurfaceSlugRouteImport } from './routes/surface.$slug'
 import { Route as AccountPasswordRouteImport } from './routes/account/password'
 import { Route as AccountEmailRouteImport } from './routes/account/email'
 
 const VerifyEmailRoute = VerifyEmailRouteImport.update({
   id: '/verify-email',
   path: '/verify-email',
-  getParentRoute: () => rootRouteImport,
-} as any)
-const SurfaceRoute = SurfaceRouteImport.update({
-  id: '/surface',
-  path: '/surface',
   getParentRoute: () => rootRouteImport,
 } as any)
 const SignupRoute = SignupRouteImport.update({
@@ -60,6 +55,11 @@ const AccountIndexRoute = AccountIndexRouteImport.update({
   path: '/account/',
   getParentRoute: () => rootRouteImport,
 } as any)
+const SurfaceSlugRoute = SurfaceSlugRouteImport.update({
+  id: '/surface/$slug',
+  path: '/surface/$slug',
+  getParentRoute: () => rootRouteImport,
+} as any)
 const AccountPasswordRoute = AccountPasswordRouteImport.update({
   id: '/account/password',
   path: '/account/password',
@@ -77,10 +77,10 @@ export interface FileRoutesByFullPath {
   '/login': typeof LoginRoute
   '/reset-password': typeof ResetPasswordRoute
   '/signup': typeof SignupRoute
-  '/surface': typeof SurfaceRoute
   '/verify-email': typeof VerifyEmailRoute
   '/account/email': typeof AccountEmailRoute
   '/account/password': typeof AccountPasswordRoute
+  '/surface/$slug': typeof SurfaceSlugRoute
   '/account': typeof AccountIndexRoute
 }
 export interface FileRoutesByTo {
@@ -89,10 +89,10 @@ export interface FileRoutesByTo {
   '/login': typeof LoginRoute
   '/reset-password': typeof ResetPasswordRoute
   '/signup': typeof SignupRoute
-  '/surface': typeof SurfaceRoute
   '/verify-email': typeof VerifyEmailRoute
   '/account/email': typeof AccountEmailRoute
   '/account/password': typeof AccountPasswordRoute
+  '/surface/$slug': typeof SurfaceSlugRoute
   '/account': typeof AccountIndexRoute
 }
 export interface FileRoutesById {
@@ -102,10 +102,10 @@ export interface FileRoutesById {
   '/login': typeof LoginRoute
   '/reset-password': typeof ResetPasswordRoute
   '/signup': typeof SignupRoute
-  '/surface': typeof SurfaceRoute
   '/verify-email': typeof VerifyEmailRoute
   '/account/email': typeof AccountEmailRoute
   '/account/password': typeof AccountPasswordRoute
+  '/surface/$slug': typeof SurfaceSlugRoute
   '/account/': typeof AccountIndexRoute
 }
 export interface FileRouteTypes {
@@ -116,10 +116,10 @@ export interface FileRouteTypes {
     | '/login'
     | '/reset-password'
     | '/signup'
-    | '/surface'
     | '/verify-email'
     | '/account/email'
     | '/account/password'
+    | '/surface/$slug'
     | '/account'
   fileRoutesByTo: FileRoutesByTo
   to:
@@ -128,10 +128,10 @@ export interface FileRouteTypes {
     | '/login'
     | '/reset-password'
     | '/signup'
-    | '/surface'
     | '/verify-email'
     | '/account/email'
     | '/account/password'
+    | '/surface/$slug'
     | '/account'
   id:
     | '__root__'
@@ -140,10 +140,10 @@ export interface FileRouteTypes {
     | '/login'
     | '/reset-password'
     | '/signup'
-    | '/surface'
     | '/verify-email'
     | '/account/email'
     | '/account/password'
+    | '/surface/$slug'
     | '/account/'
   fileRoutesById: FileRoutesById
 }
@@ -153,10 +153,10 @@ export interface RootRouteChildren {
   LoginRoute: typeof LoginRoute
   ResetPasswordRoute: typeof ResetPasswordRoute
   SignupRoute: typeof SignupRoute
-  SurfaceRoute: typeof SurfaceRoute
   VerifyEmailRoute: typeof VerifyEmailRoute
   AccountEmailRoute: typeof AccountEmailRoute
   AccountPasswordRoute: typeof AccountPasswordRoute
+  SurfaceSlugRoute: typeof SurfaceSlugRoute
   AccountIndexRoute: typeof AccountIndexRoute
 }
 
@@ -167,13 +167,6 @@ declare module '@tanstack/react-router' {
       path: '/verify-email'
       fullPath: '/verify-email'
       preLoaderRoute: typeof VerifyEmailRouteImport
-      parentRoute: typeof rootRouteImport
-    }
-    '/surface': {
-      id: '/surface'
-      path: '/surface'
-      fullPath: '/surface'
-      preLoaderRoute: typeof SurfaceRouteImport
       parentRoute: typeof rootRouteImport
     }
     '/signup': {
@@ -218,6 +211,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof AccountIndexRouteImport
       parentRoute: typeof rootRouteImport
     }
+    '/surface/$slug': {
+      id: '/surface/$slug'
+      path: '/surface/$slug'
+      fullPath: '/surface/$slug'
+      preLoaderRoute: typeof SurfaceSlugRouteImport
+      parentRoute: typeof rootRouteImport
+    }
     '/account/password': {
       id: '/account/password'
       path: '/account/password'
@@ -241,10 +241,10 @@ const rootRouteChildren: RootRouteChildren = {
   LoginRoute: LoginRoute,
   ResetPasswordRoute: ResetPasswordRoute,
   SignupRoute: SignupRoute,
-  SurfaceRoute: SurfaceRoute,
   VerifyEmailRoute: VerifyEmailRoute,
   AccountEmailRoute: AccountEmailRoute,
   AccountPasswordRoute: AccountPasswordRoute,
+  SurfaceSlugRoute: SurfaceSlugRoute,
   AccountIndexRoute: AccountIndexRoute,
 }
 export const routeTree = rootRouteImport

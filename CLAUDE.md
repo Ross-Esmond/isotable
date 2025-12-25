@@ -18,7 +18,7 @@ npm run serve
 npm run test
 
 # Linting and formatting
-npm run lint          # Run ESLint
+npm run lint          # Fix with ESLint
 npm run format        # Run Prettier
 npm run check         # Format with Prettier and fix with ESLint
 ```
@@ -68,6 +68,12 @@ Key patterns:
 - `SupabaseSurface.setDatabaseEvents()` merges database events with local events
 - Real-time updates via Supabase channels (currently logs changes)
 - Database events are converted from `DatabaseEvent` format to internal `Event` format via `processDatabaseEvent()`
+
+### Playspaces
+
+- Each online session is called a "playspace" and is tracked in the `playspaces` table in Supabase.
+- Playspaces keep track of how many sources of events are connected, generally one per browser tab.
+- Source 0 is reserved for server-generated events.
 
 ### File Organization
 
