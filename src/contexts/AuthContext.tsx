@@ -1,12 +1,8 @@
-import {
-  createContext,
-  useEffect,
-  useState,
-  type ReactNode,
-} from 'react';
+import { createContext, useEffect, useState } from 'react';
+import type { ReactNode } from 'react';
+import type { AuthContextValue, AuthResult, Session, User } from '@/types/auth';
 import supabase from '@/lib/supabase';
 import { parseAuthError } from '@/lib/auth';
-import type { AuthContextValue, AuthResult, User, Session } from '@/types/auth';
 
 const AuthContext = createContext<AuthContextValue | null>(null);
 
@@ -17,18 +13,18 @@ export function AuthProvider({ children }: { children: ReactNode }) {
 
   useEffect(() => {
     // Get initial session
-    supabase.auth.getSession().then(({ data: { session } }) => {
-      setSession(session);
-      setUser(session?.user ?? null);
+    supabase.auth.getSession().then(({ data: { session: nextSession } }) => {
+      setSession(nextSession);
+      setUser(nextSession?.user ?? null);
       setLoading(false);
     });
 
     // Listen for auth changes
     const {
       data: { subscription },
-    } = supabase.auth.onAuthStateChange((_event, session) => {
-      setSession(session);
-      setUser(session?.user ?? null);
+    } = supabase.auth.onAuthStateChange((_event, nextSession) => {
+      setSession(nextSession);
+      setUser(nextSession?.user ?? null);
       setLoading(false);
     });
 
@@ -37,7 +33,10 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     };
   }, []);
 
-  const signUp = async (email: string, password: string): Promise<AuthResult> => {
+  const signUp = async (
+    email: string,
+    password: string,
+  ): Promise<AuthResult> => {
     try {
       const { error } = await supabase.auth.signUp({
         email,
@@ -60,7 +59,10 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     }
   };
 
-  const signIn = async (email: string, password: string): Promise<AuthResult> => {
+  const signIn = async (
+    email: string,
+    password: string,
+  ): Promise<AuthResult> => {
     try {
       const { error } = await supabase.auth.signInWithPassword({
         email,

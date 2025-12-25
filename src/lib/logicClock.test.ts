@@ -1,13 +1,13 @@
 import { beforeEach, expect, test } from 'vitest';
 import {
+  extractSourceCodeFromSnowportId,
+  extractTimestampFromSnowportId,
+  resetLogicClock,
   setSourceCode,
   takeSnowportId,
-  extractTimestampFromSnowportId,
-  extractSourceCodeFromSnowportId,
-  resetLogicClock,
 } from './logicClock';
 
-beforeEach(async () => {
+beforeEach(() => {
   resetLogicClock();
   setSourceCode(1);
 });

@@ -1,15 +1,19 @@
 import { createFileRoute, useNavigate } from '@tanstack/react-router';
 import { useEffect, useState } from 'react';
+import { AlertCircle, CheckCircle } from 'lucide-react';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Alert, AlertDescription } from '@/components/ui/alert';
-import { CheckCircle, AlertCircle } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { useAuth } from '@/hooks/useAuth';
 
-export const Route = createFileRoute('/verify-email')({ component: VerifyEmail });
+export const Route = createFileRoute('/verify-email')({
+  component: VerifyEmail,
+});
 
 function VerifyEmail() {
-  const [status, setStatus] = useState<'loading' | 'success' | 'error'>('loading');
+  const [status, setStatus] = useState<'loading' | 'success' | 'error'>(
+    'loading',
+  );
   const navigate = useNavigate();
   const { resendVerification } = useAuth();
   const [resending, setResending] = useState(false);

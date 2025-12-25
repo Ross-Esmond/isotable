@@ -45,11 +45,11 @@ export function isValidEmail(email: string): boolean {
 
 export interface PasswordValidationResult {
   valid: boolean;
-  errors: string[];
+  errors: Array<string>;
 }
 
 export function validatePassword(password: string): PasswordValidationResult {
-  const errors: string[] = [];
+  const errors: Array<string> = [];
 
   if (password.length < 8) {
     errors.push('Password must be at least 8 characters long');

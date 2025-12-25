@@ -40,7 +40,7 @@ export function extractSourceCodeFromSnowportId(snowportId: number): number {
  * Extracts the timestamp from a snowportId
  */
 export function extractTimestampFromSnowportId(snowportId: number): number {
-  return Math.floor(snowportId / (2 ** 16));
+  return Math.floor(snowportId / 2 ** 16);
 }
 
 export function takeSnowportId(): number {

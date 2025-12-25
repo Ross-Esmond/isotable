@@ -1,5 +1,5 @@
-import { Alert, AlertDescription } from '@/components/ui/alert';
 import { AlertCircle, CheckCircle } from 'lucide-react';
+import { Alert, AlertDescription } from '@/components/ui/alert';
 
 interface AuthErrorDisplayProps {
   error?: string | null;

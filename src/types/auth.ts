@@ -1,4 +1,4 @@
-import type { User, Session, AuthError } from '@supabase/supabase-js';
+import type { AuthError, Session, User } from '@supabase/supabase-js';
 
 export type { User, Session, AuthError };
 

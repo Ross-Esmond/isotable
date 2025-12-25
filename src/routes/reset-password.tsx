@@ -1,11 +1,19 @@
 import { createFileRoute } from '@tanstack/react-router';
 import { useEffect, useState } from 'react';
-import { ResetPasswordForm } from '@/components/forms/ResetPasswordForm';
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
-import { Alert, AlertDescription } from '@/components/ui/alert';
 import { AlertCircle } from 'lucide-react';
+import { ResetPasswordForm } from '@/components/forms/ResetPasswordForm';
+import {
+  Card,
+  CardContent,
+  CardDescription,
+  CardHeader,
+  CardTitle,
+} from '@/components/ui/card';
+import { Alert, AlertDescription } from '@/components/ui/alert';
 
-export const Route = createFileRoute('/reset-password')({ component: ResetPassword });
+export const Route = createFileRoute('/reset-password')({
+  component: ResetPassword,
+});
 
 function ResetPassword() {
   const [hasToken, setHasToken] = useState(false);
@@ -17,7 +25,9 @@ function ResetPassword() {
     if (hash && hash.includes('access_token')) {
       setHasToken(true);
     } else {
-      setError('Invalid or expired reset link. Please request a new password reset.');
+      setError(
+        'Invalid or expired reset link. Please request a new password reset.',
+      );
     }
   }, []);
 
@@ -52,9 +62,7 @@ function ResetPassword() {
       <Card className="w-full max-w-md">
         <CardHeader>
           <CardTitle>Reset Password</CardTitle>
-          <CardDescription>
-            Enter your new password below
-          </CardDescription>
+          <CardDescription>Enter your new password below</CardDescription>
         </CardHeader>
         <CardContent>
           <ResetPasswordForm />

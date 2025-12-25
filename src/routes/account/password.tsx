@@ -1,11 +1,19 @@
-import { createFileRoute, Link } from '@tanstack/react-router';
+import { Link, createFileRoute } from '@tanstack/react-router';
+import { ArrowLeft } from 'lucide-react';
 import { ProtectedRoute } from '@/components/auth/ProtectedRoute';
 import { ChangePasswordForm } from '@/components/forms/ChangePasswordForm';
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
+import {
+  Card,
+  CardContent,
+  CardDescription,
+  CardHeader,
+  CardTitle,
+} from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
-import { ArrowLeft } from 'lucide-react';
 
-export const Route = createFileRoute('/account/password')({ component: ChangePassword });
+export const Route = createFileRoute('/account/password')({
+  component: ChangePassword,
+});
 
 function ChangePassword() {
   return (

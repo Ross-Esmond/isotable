@@ -1,7 +1,13 @@
-import { createFileRoute, Link } from '@tanstack/react-router';
+import { Link, createFileRoute } from '@tanstack/react-router';
 import { ProtectedRoute } from '@/components/auth/ProtectedRoute';
 import { useAuth } from '@/hooks/useAuth';
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
+import {
+  Card,
+  CardContent,
+  CardDescription,
+  CardHeader,
+  CardTitle,
+} from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Separator } from '@/components/ui/separator';
 
@@ -54,9 +60,7 @@ function AccountContent() {
         <Card>
           <CardHeader>
             <CardTitle>Security Settings</CardTitle>
-            <CardDescription>
-              Manage your email and password
-            </CardDescription>
+            <CardDescription>Manage your email and password</CardDescription>
           </CardHeader>
           <CardContent className="space-y-4">
             <div className="flex items-center justify-between">
@@ -74,9 +78,7 @@ function AccountContent() {
             <div className="flex items-center justify-between">
               <div>
                 <p className="font-medium">Change Password</p>
-                <p className="text-sm text-slate-500">
-                  Update your password
-                </p>
+                <p className="text-sm text-slate-500">Update your password</p>
               </div>
               <Button variant="outline" asChild>
                 <Link to="/account/password">Change</Link>

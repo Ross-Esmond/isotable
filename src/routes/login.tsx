@@ -1,7 +1,14 @@
-import { createFileRoute, Link } from '@tanstack/react-router';
+import { Link, createFileRoute } from '@tanstack/react-router';
 import { useAuthRedirect } from '@/hooks/useAuthRedirect';
 import { LoginForm } from '@/components/forms/LoginForm';
-import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from '@/components/ui/card';
+import {
+  Card,
+  CardContent,
+  CardDescription,
+  CardFooter,
+  CardHeader,
+  CardTitle,
+} from '@/components/ui/card';
 
 export const Route = createFileRoute('/login')({ component: Login });
 
@@ -23,7 +30,10 @@ function Login() {
         <CardFooter className="flex flex-col space-y-2">
           <p className="text-center text-sm text-slate-600">
             Don't have an account?{' '}
-            <Link to="/signup" className="font-medium text-slate-900 hover:underline">
+            <Link
+              to="/signup"
+              className="font-medium text-slate-900 hover:underline"
+            >
               Sign up
             </Link>
           </p>
