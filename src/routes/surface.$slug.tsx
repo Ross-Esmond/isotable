@@ -1,12 +1,15 @@
 import { createFileRoute } from '@tanstack/react-router';
 import * as THREE from 'three';
-import { useEffect, useRef } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import type { PointerEvent, WheelEvent } from 'react';
 import supabase from '@/lib/supabase';
 import { useSupabaseSurface } from '@/lib/SupabaseSurface';
 import { useEventUploader } from '@/lib/useEventUploader';
 import { smoothSteps } from '@/lib/utils';
 import { usePlayspaceAccess } from '@/hooks/usePlayspaceAccess';
+import { Button } from '@/components/ui/button';
+import { Edit } from 'lucide-react';
+import { SurfaceSidebar } from '@/components/SurfaceSidebar';
 
 export const Route = createFileRoute('/surface/$slug')({
   component: SurfaceWithSlug,
@@ -62,6 +65,7 @@ function SurfaceApp({ playspaceId }: { playspaceId: number }) {
   const rendererRef = useRef<THREE.WebGLRenderer | null>(null);
   const commitDragTimerRef = useRef<number | null>(null);
   const isCommitScheduledRef = useRef(false);
+  const [isSidebarOpen, setIsSidebarOpen] = useState(false);
 
   const [render, setSurface, surfaceRef] = useSupabaseSurface(
     supabase,
@@ -173,13 +177,32 @@ function SurfaceApp({ playspaceId }: { playspaceId: number }) {
   }
 
   return (
-    <div
-      ref={shell}
-      className="min-h-screen bg-gradient-to-b from-slate-900 via-slate-800 to-slate-900"
-      onWheel={onWheel}
-      onPointerDown={pointerdown}
-      onPointerMove={pointermove}
-      onPointerUp={pointerup}
-    ></div>
+    <>
+      {/* Main canvas */}
+      <div
+        ref={shell}
+        className="min-h-screen bg-gradient-to-b from-slate-900 via-slate-800 to-slate-900"
+        onWheel={onWheel}
+        onPointerDown={pointerdown}
+        onPointerMove={pointermove}
+        onPointerUp={pointerup}
+      ></div>
+
+      {/* Sidebar */}
+      <SurfaceSidebar
+        isOpen={isSidebarOpen}
+        playspaceId={playspaceId}
+        supabase={supabase}
+      />
+
+      {/* Floating edit button */}
+      <Button
+        onClick={() => setIsSidebarOpen(!isSidebarOpen)}
+        className="fixed bottom-6 left-6 h-14 w-14 rounded-full shadow-lg z-50"
+        size="icon"
+      >
+        <Edit className="h-6 w-6" />
+      </Button>
+    </>
   );
 }

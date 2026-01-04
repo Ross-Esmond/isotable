@@ -124,7 +124,6 @@ export function useSupabaseSurface(
             event: '*',
             schema: 'public',
             table: 'events',
-            filter: `playspace=eq.${playspaceId}`,
           },
           (payload: RealtimePostgresChangesPayload<DatabaseEvent>) => {
             try {
